@@ -2,30 +2,40 @@ import numpy as np
 
 
 class ContourPoint:
-    def __init__(self, x, y, next=None, previous=None):
+    def __init__(self, x: float, y: float, next=None, previous=None):
         self.x = x
         self.y = y
         self.next = next
         self.previous = previous
 
+    def update_point(self, new_x: float, new_y: float):
+        self.x = new_x
+        self.y = new_y
+
     def get_neighborhood(self, size=5) -> np.ndarray:
-        neighborhood = []
+        neighborhood = np.empty((size, size), dtype=ContourPoint)
 
-        for i in range(-(size // 2), (size // 2) + 1):
-            row = []
-            for j in range(-(size // 2), (size // 2) + 1):
-                row.append(ContourPoint(self.x + i, self.y + j))
-            neighborhood.append(row)
+        for i in range(size):
+            for j in range(size):
+                neighborhood[i][j] = ContourPoint(
+                    self.x - ((size // 2) + i), self.y - ((size // 2) + j)
+                )
 
-        result = np.empty((size, size), dtype=ContourPoint)
-        result[:] = neighborhood
-
-        return result
+        return neighborhood
 
     def calculate_distance(self, from_point: ContourPoint) -> float:
         return np.sqrt(
             np.square(self.x - from_point.x) + np.square(self.y - from_point.y)
         )
+
+    def __repr__(self):
+        return f"({self.x}, {self.y})"
+
+    def __str__(self):
+        return f"({self.x}, {self.y})"
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
 
 
 # Represents a contour as a circular doubly linked list
@@ -36,13 +46,16 @@ class Contour:
         self.num_points = 0
 
     def add_point(self, x: float, y: float):
+        new_point = ContourPoint(x, y)
+
         if self.num_points == 0:
             self.start = ContourPoint(x, y)
             self.end = self.start
+            self.start.next = self.end
+            self.start.previous = self.end
             self.num_points = 1
             return
 
-        new_point = ContourPoint(x, y)
         new_point.previous = self.end
         new_point.next = self.start
         self.end.next = new_point
