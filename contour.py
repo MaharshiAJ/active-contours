@@ -12,20 +12,28 @@ class ContourPoint:
         self.x = new_x
         self.y = new_y
 
-    def get_neighborhood(self, size=5) -> np.ndarray:
+    def get_neighborhood(self, max_height: int, max_width: int, size=3) -> np.ndarray:
         neighborhood = np.empty((size, size), dtype=ContourPoint)
 
-        for i in range(size):
-            for j in range(size):
-                neighborhood[i][j] = ContourPoint(
-                    self.x - ((size // 2) + i), self.y - ((size // 2) + j)
+        row_ind = 0
+        col_ind = 0
+        for i in range(-(size // 2), (size // 2) + 1):
+            for j in range(-(size // 2), (size // 2) + 1):
+                x = max(0, min(self.x + i, max_height - 1))
+                y = max(0, min(self.y + j, max_width - 1))
+                neighborhood[row_ind][col_ind] = ContourPoint(
+                    x, y, next=self.next, previous=self.previous
                 )
+                col_ind += 1
+            row_ind += 1
+            col_ind = 0
 
         return neighborhood
 
-    def calculate_distance(self, from_point: ContourPoint) -> float:
+    @staticmethod
+    def calculate_distance(point_1, point_2) -> float:
         return np.sqrt(
-            np.square(self.x - from_point.x) + np.square(self.y - from_point.y)
+            np.square(point_2.x - point_1.x) + np.square(point_2.y - point_1.y)
         )
 
     def __repr__(self):
@@ -53,6 +61,8 @@ class Contour:
             self.end = self.start
             self.start.next = self.end
             self.start.previous = self.end
+            self.end.previous = self.start
+            self.end.next = self.start
             self.num_points = 1
             return
 
@@ -69,7 +79,7 @@ class Contour:
         current = self.start.next
 
         for i in range(1, self.num_points):
-            distance += current.calculate_distance(current.previous)
+            distance += ContourPoint.calculate_distance(current.previous, current)
             current = current.next
 
         return distance / self.num_points
@@ -79,8 +89,28 @@ class Contour:
         current = self.start
         for i in range(self.num_points):
             arr[i] = (current.x, current.y)
+            current = current.next
 
         return arr
 
+    def get_contour_polyline(self) -> np.ndarray:
+        arr = np.empty((self.num_points, 2), dtype=np.int32)
+
+        current = self.start
+        for i in range(self.num_points):
+            arr[i] = [current.x, current.y]
+            current = current.next
+
+        return arr.reshape((-1, 1, 2))
+
     def __len__(self):
         return self.num_points
+
+    @staticmethod
+    def build_contour_from_array(arr: np.ndarray):
+        contour = Contour()
+
+        for i in range(arr.size):
+            contour.add_point(arr[i][0], arr[i][1])
+
+        return contour
